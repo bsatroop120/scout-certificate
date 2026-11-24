@@ -109,11 +109,10 @@ footer{font-size:12px;color:#77867d;max-width:1420px;margin:auto;padding:0 25px 
 <div class="swatch-group">
 <div class="swatch-label">Writing area finish</div>
 <div class="swatches" role="group" aria-label="Paper color">
-<button type="button" class="swatch" style="background:linear-gradient(135deg,#ffffff,#f8f8f8)" data-paper="white" aria-label="White writing area" aria-pressed="false"></button>
-<button type="button" class="swatch" style="background:linear-gradient(135deg,#fffef9,#efe6d0)" data-paper="parchment" aria-label="Original parchment" aria-pressed="true"></button>
-<button type="button" class="swatch" style="background:linear-gradient(135deg,#fffdf7,#f2eee2)" data-paper="cream" aria-label="Warm cream" aria-pressed="false"></button>
-<button type="button" class="swatch" style="background:linear-gradient(135deg,#ffffff,#eef2f4)" data-paper="mist" aria-label="Cool mist" aria-pressed="false"></button>
 <button type="button" class="swatch" style="background:#ffffff" data-paper="fullwhite" aria-label="Full white background" title="Full white background" aria-pressed="false"></button>
+<button type="button" class="swatch" style="background:linear-gradient(135deg,#fffef9,#efe6d0)" data-paper="parchment" aria-label="Original parchment" title="Original parchment" aria-pressed="true"></button>
+<button type="button" class="swatch" style="background:linear-gradient(135deg,#ffffff,#f8f8f8)" data-paper="white" aria-label="White writing area" title="White writing area" aria-pressed="false"></button>
+<button type="button" class="swatch" style="background:linear-gradient(135deg,#ffffff,#eef2f4)" data-paper="mist" aria-label="Cool mist" title="Cool mist" aria-pressed="false"></button>
 </div>
 </div>
 </div>
@@ -182,7 +181,7 @@ function fromForm(){for(const key of keys){state[key]=document.getElementById(ke
 function toForm(){for(const key of keys){document.getElementById(key).value=state[key]??'';document.querySelector(`[data-font-family="${key}"]`).value=state['fontFamily_'+key]||'default';document.querySelector(`[data-font-size="${key}"]`).value=state['fontSize_'+key]||'auto'}document.querySelector('input[name="alignment"][value="'+(state.alignment==='justify'?'justify':'center')+'"]').checked=true;syncToggles()}
 function syncToggles(){document.querySelectorAll('[data-theme]').forEach(el=>el.setAttribute('aria-pressed',String(el.dataset.theme===state.theme)));document.querySelectorAll('[data-accent]').forEach(el=>el.setAttribute('aria-pressed',String(el.dataset.accent===state.accent)));document.querySelectorAll('[data-paper]').forEach(el=>el.setAttribute('aria-pressed',String(el.dataset.paper===state.paper)));document.documentElement.style.setProperty('--accent',accentColors[state.accent]||accentColors.forest)}
 function persist(){try{localStorage.setItem('scoutCertificateStudio:v4',JSON.stringify(state))}catch(e){}}
-function restore(){try{const updated=localStorage.getItem('scoutCertificateStudio:v4');const obj=JSON.parse(updated||localStorage.getItem('scoutCertificateStudio:v3')||'null');if(obj&&typeof obj==='object'){for(const k of Object.keys(defaults))if(typeof obj[k]==='string')state[k]=obj[k]}if(!updated)state.theme='classic';if(!accentColors[state.accent])state.accent='forest';if(!paperStyles[state.paper])state.paper='white';if(!['classic','script','rustic'].includes(state.theme))state.theme='classic'}catch(e){}}
+function restore(){try{const updated=localStorage.getItem('scoutCertificateStudio:v4');const obj=JSON.parse(updated||localStorage.getItem('scoutCertificateStudio:v3')||'null');if(obj&&typeof obj==='object'){for(const k of Object.keys(defaults))if(typeof obj[k]==='string')state[k]=obj[k]}if(!updated)state.theme='classic';if(!accentColors[state.accent])state.accent='forest';if(state.paper==='cream')state.paper='parchment';if(!paperStyles[state.paper])state.paper='white';if(!['classic','script','rustic'].includes(state.theme))state.theme='classic'}catch(e){}}
 
 // Original vector log lettering: self-contained in the SVG for printing and PDF export.
 const rusticLogFont='Rustic Log';
