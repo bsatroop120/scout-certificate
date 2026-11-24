@@ -539,115 +539,6 @@ function matchRightRope(ctx,art,w,h,pad){
   ctx.drawImage(patch,0,pad);
 }
 
-// Local flag artwork: the upper staffs stop at the first rope wrap, and
-// two smaller patrol staffs are visible only above HELPFUL / THRIFTY.
-function addPatrolFlagArtwork(ctx,art,w,h,pad){
-  const W=1088,H=1394;
-  const sx=w/W,sy=h/H;
-  // Clone only the narrow exposed shaft below the third law ribbon;
-  // original ribbon faces, lettering, trunk edges and rope footer stay intact.
-  const cloneShaft=(segments,offset)=>{
-    const patch=document.createElement('canvas');patch.width=w;patch.height=h;
-    const p=patch.getContext('2d');
-    p.drawImage(art,offset*sx,0,w,h);
-    const mask=document.createElement('canvas');mask.width=w;mask.height=h;
-    const m=mask.getContext('2d');
-    m.scale(sx,sy);
-    m.filter='blur('+1.15*sx+'px)';
-    m.fillStyle='#fff';
-    for(const points of segments){
-      m.beginPath();points.forEach(([x,y],i)=>i?m.lineTo(x,y):m.moveTo(x,y));
-      m.closePath();m.fill();
-    }
-    p.globalCompositeOperation='destination-in';p.drawImage(mask,0,0);
-    ctx.drawImage(patch,0,pad);
-  };
-  cloneShaft([
-    [[147,781],[160,777],[160,822],[147,827]],
-    [[147,890],[160,885],[160,932],[147,938]],
-    [[146,1002],[159,997],[159,1041],[146,1048]],
-    [[145,1121],[158,1116],[158,1170],[145,1177]]
-  ],14);
-  cloneShaft([
-    [[921,781],[934,785],[934,827],[921,822]],
-    [[921,890],[934,896],[934,938],[921,932]],
-    [[921,1002],[934,1007],[934,1048],[921,1041]],
-    [[922,1121],[935,1127],[935,1177],[922,1170]]
-  ],-14);
-  ctx.save();ctx.translate(0,pad);ctx.scale(sx,sy);
-  const path=(points)=>{
-    ctx.beginPath();points.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));ctx.closePath();
-  };
-  // Shaded varnished wood, matching the red and blue flag staffs above.
-  // The exposed portions are clipped at the existing main banner and rope.
-  const shaft=(x1,y1,x2,y2,width,clip)=>{
-    ctx.save();if(clip){path(clip);ctx.clip()}
-    const length=Math.hypot(x2-x1,y2-y1);
-    ctx.translate(x1,y1);ctx.rotate(Math.atan2(y2-y1,x2-x1)-Math.PI/2);
-    const g=ctx.createLinearGradient(-width/2,0,width/2,0);
-    g.addColorStop(0,'#4f250e');g.addColorStop(.14,'#7b3d18');
-    g.addColorStop(.33,'#bf7935');g.addColorStop(.47,'#edbd70');
-    g.addColorStop(.60,'#c98940');g.addColorStop(.82,'#8a4219');
-    g.addColorStop(1,'#53280e');
-    ctx.fillStyle=g;ctx.fillRect(-width/2,-1,width,length+2);
-    ctx.strokeStyle='rgba(71,34,13,.36)';ctx.lineWidth=.65;
-    ctx.beginPath();ctx.moveTo(width*.21,1);ctx.bezierCurveTo(width*.35,length*.32,width*.12,length*.66,width*.22,length);ctx.stroke();
-    ctx.strokeStyle='rgba(255,222,159,.43)';
-    ctx.beginPath();ctx.moveTo(-width*.19,1);ctx.lineTo(-width*.13,length);ctx.stroke();
-    ctx.restore();
-  };
-  shaft(124,389,136,445,11,[[116,390],[132,390],[143,438],[130,444],[120,410]]);
-  shaft(954,387,942,437,11,[[946,390],[963,389],[952,432],[937,438]]);
-  // The smaller patrol staffs have separate rounded caps and sit in the
-  // inner trunk channels, with all ribbon faces left in the foreground.
-  const patrol=(right)=>{
-    ctx.save();if(right){ctx.translate(1080,0);ctx.scale(-1,1)}
-    const x=153;
-    // Small exposed sections only, stopping where the third ribbon begins.
-    shaft(x,475,x+1,496,8,[[147,476],[159,476],[160,496],[147,500]]);
-    shaft(x+1,549,x+1,614,8,[[147,554],[161,548],[161,611],[147,616]]);
-    shaft(x+1,660,x+1,723,8,[[147,665],[161,660],[161,719],[147,726]]);
-    const cap=ctx.createRadialGradient(x-1,474,0,x,476,5);
-    cap.addColorStop(0,'#e8be7e');cap.addColorStop(.45,'#a66a34');cap.addColorStop(1,'#633618');
-    ctx.fillStyle=cap;ctx.strokeStyle='#6c3b1c';ctx.lineWidth=.7;
-    ctx.beginPath();ctx.ellipse(x,475,4.3,5,0,0,2*Math.PI);ctx.fill();ctx.stroke();
-    // A small pennant projects into the open space between law wraps.
-    // The lower and upper edges disappear behind the adjacent ribbons.
-    ctx.save();path([[150,553],[165,548],[185,540],[203,534],[203,590],[185,598],[166,606],[150,614]]);ctx.clip();
-    const dark=right?'#794b2d':'#46543a',mid=right?'#9a7045':'#66744b',light=right?'#c29a65':'#a3a878';
-    const fabric=ctx.createLinearGradient(156,548,186,603);
-    fabric.addColorStop(0,dark);fabric.addColorStop(.24,mid);
-    fabric.addColorStop(.43,light);fabric.addColorStop(.59,mid);
-    fabric.addColorStop(.82,dark);fabric.addColorStop(1,mid);
-    const pennant=()=>{
-      ctx.beginPath();ctx.moveTo(156,539);
-      ctx.bezierCurveTo(167,549,183,550,198,568);
-      ctx.bezierCurveTo(182,575,170,588,156,610);
-      ctx.bezierCurveTo(159,586,153,561,156,539);ctx.closePath();
-    };
-    pennant();ctx.fillStyle=fabric;ctx.fill();ctx.strokeStyle='#62482d';ctx.lineWidth=1.25;ctx.stroke();
-    ctx.save();pennant();ctx.clip();
-    // Restrained cloth grain and curved folds rather than flat solid color.
-    for(let i=0;i<36;i++){
-      const yy=540+i*2.15;
-      ctx.strokeStyle=i%3===0?'rgba(255,237,196,.12)':'rgba(45,31,18,.075)';
-      ctx.lineWidth=.45;ctx.beginPath();ctx.moveTo(155,yy);
-      ctx.bezierCurveTo(168,yy+2,180,yy-3,201,yy+1);ctx.stroke();
-    }
-    ctx.strokeStyle='rgba(242,219,168,.60)';ctx.lineWidth=1.15;
-    ctx.beginPath();ctx.moveTo(159,544);ctx.bezierCurveTo(172,552,184,555,195,568);
-    ctx.bezierCurveTo(181,576,170,586,159,604);ctx.stroke();
-    ctx.strokeStyle='rgba(55,38,20,.35)';ctx.lineWidth=1.1;
-    ctx.beginPath();ctx.moveTo(158,548);ctx.bezierCurveTo(164,562,165,579,159,600);ctx.stroke();
-    ctx.restore();ctx.restore();
-    // Draw the inner edge of the staff in front of the flag attachment.
-    shaft(x+1,549,x+1,614,8,[[147,554],[161,548],[161,611],[147,616]]);
-    ctx.restore();
-  };
-  patrol(false);patrol(true);
-  ctx.restore();
-}
-
 async function prepareExtendedArtwork(){
   const [parchment,white]=await Promise.all([loadArtwork(ornateFrame),loadArtwork(ornateFrameFullWhite)]);
   const w=parchment.naturalWidth,h=parchment.naturalHeight,pad=Math.max(1,Math.round(h*14/1086));
@@ -689,11 +580,9 @@ async function prepareExtendedArtwork(){
   }
   ctx.putImageData(extension,0,0);ctx.drawImage(parchment,0,pad,w,h);
   matchRightRope(ctx,parchment,w,h,pad);
-  addPatrolFlagArtwork(ctx,parchment,w,h,pad);
   const parchmentSrc=canvas.toDataURL('image/png');
   ctx.fillStyle='#ffffff';ctx.fillRect(0,0,w,h+pad);ctx.drawImage(white,0,pad,w,h);
   matchRightRope(ctx,white,w,h,pad);
-  addPatrolFlagArtwork(ctx,white,w,h,pad);
   extendedArtwork={parchment:parchmentSrc,fullwhite:canvas.toDataURL('image/png')};
 }
 
