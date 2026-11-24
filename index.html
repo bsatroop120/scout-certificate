@@ -390,7 +390,7 @@ function drawing(){
 
   const upperShift=24; // Only the text between the top banner and the citation moves.
   const orgLines=String(state.unit||'').split(/\n/).map(s=>s.trim()).filter(Boolean).slice(0,3);
-  if(orgLines.length){let startY=(orgLines.length===1?380:orgLines.length===2?357:343)+upperShift;orgLines.forEach((t,i)=>{const font=fieldFont('unit',headingFont),size=fittedSize(t,fieldSize('unit',orgLines.length===1?27:24),450,font,'bold',16);parts.push(line(425,startY+i*30,t,{size,family:font,weight:'bold',fill:ink}))})}
+  if(orgLines.length){let startY=(orgLines.length===1?380:orgLines.length===2?357:343)+upperShift;orgLines.forEach((t,i)=>{const font=fieldFont('unit','Georgia, "Times New Roman", serif'),size=fittedSize(t,fieldSize('unit',orgLines.length===1?27:24),450,font,'bold',16);parts.push(line(425,startY+i*30,t,{size,family:font,weight:'bold',fill:ink}))})}
   {const font=fieldFont('presentation','Georgia, serif');parts.push(line(425,437+upperShift,(state.presentation||'').trim(),{size:fittedSize(state.presentation||'',fieldSize('presentation',18),420,font,'normal',12),family:font,italic:true,fill:'#6d6a61'}))}
   const rec=noMoreThan(state.recipient,140),recFont=fieldFont('recipient',nameFont),rn=fittedSize(rec,fieldSize('recipient',isScript?56:52),460,recFont,'bold',24);
   parts.push(line(425,485+upperShift,rec,{size:rn,family:recFont,weight:'bold',fill:c,italic:isScript}));
