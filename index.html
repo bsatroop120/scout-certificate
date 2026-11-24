@@ -542,42 +542,35 @@ function matchRightRope(ctx,art,w,h,pad){
 // Blend the tiny artificial join on the lower-right curve of the center knot.
 // Coordinates match the existing frame; no other rope contours are changed.
 function smoothCenterKnotSeam(ctx,w,h,pad){
-  // Replace the dark joint with neighboring intact wood grain, rather than
-  // averaging the joint itself. Limit the retouch to the bottom-right arc.
-  const sx=w/755,sy=h/(755*1086/850);
-  const seam=[[388,274],[392,273.6],[396,273],[400,271.8],[404,270],[408,267.5],[412,264],[415,260],[417,256]];
-  const left=Math.floor(385*sx),right=Math.ceil(420*sx);
-  const top=Math.floor(pad+h-(308-244)*sy),bottom=Math.ceil(pad+h-(308-288)*sy);
-  const bw=right-left,bh=bottom-top;
-  const pixels=ctx.getImageData(left,top,bw,bh),data=pixels.data,original=new Uint8ClampedArray(data);
+  // Retouch the actual lower-right inner curve in original artwork coordinates.
+  // The old screenshot-based mapping was offset from this strand.
+  const sx=w/1088,sy=h/1394;
+  const points=[[551,1340],[556,1341],[563,1340],[570,1338],[577,1335],[584,1331],[590,1326],[595,1320],[598,1314]];
+  const x0=Math.floor(548*sx),y0=Math.floor(pad+1304*sy);
+  const bw=Math.ceil(602*sx)-x0,bh=Math.ceil(pad+1350*sy)-y0;
+  const p=ctx.getImageData(x0,y0,bw,bh),src=new Uint8ClampedArray(p.data);
   const sample=(x,y,k)=>{
     x=Math.max(0,Math.min(bw-1.001,x));y=Math.max(0,Math.min(bh-1.001,y));
-    const i=Math.floor(x),j=Math.floor(y),u=x-i,v=y-j;
-    const a=(j*bw+i)*4+k;
-    return (original[a]*(1-u)+original[a+4]*u)*(1-v)+(original[a+bw*4]*(1-u)+original[a+bw*4+4]*u)*v;
+    const i=Math.floor(x),j=Math.floor(y),u=x-i,v=y-j,a=(j*bw+i)*4+k;
+    return (src[a]*(1-u)+src[a+4]*u)*(1-v)+(src[a+bw*4]*(1-u)+src[a+bw*4+4]*u)*v;
   };
   for(let x=0;x<bw;x++){
-    const xx=(left+x)/sx;
-    if(xx<=388||xx>=417)continue;
-    let i=0;while(i<seam.length-2&&xx>seam[i+1][0])i++;
-    const [x0,y0]=seam[i],[x1,y1]=seam[i+1];
-    const yy=y0+(y1-y0)*(xx-x0)/(x1-x0);
-    const center=pad+h-(308-yy)*sy-top;
-    const half=5.4*sy,edge=Math.min(1,(xx-388)/3,(417-xx)/3);
-    for(let y=Math.max(0,Math.ceil(center-half));y<=Math.min(bh-1,Math.floor(center+half));y++){
-      const d=y-center;
-      const blend=edge*Math.min(1,(half-Math.abs(d))/(1.45*sy));
-      if(blend<=0)continue;
-      // Carry the intact grain from the inner face across the former join.
-      const sourceY=center-7.5*sy+d*.43;
-      for(let k=0;k<3;k++){
-        const j=(y*bw+x)*4+k;
-        const color=sample(x,sourceY,k);
-        data[j]=original[j]*(1-blend)+color*blend;
-      }
+    const xx=(x+x0)/sx;
+    if(xx<=551||xx>=598)continue;
+    let j=0;while(j<points.length-2&&xx>points[j+1][0])j++;
+    const [ax,ay]=points[j],[bx,by]=points[j+1];
+    const yy=ay+(by-ay)*(xx-ax)/(bx-ax);
+    const cy=pad+yy*sy-y0,half=4.5*sy;
+    const end=Math.min(1,(xx-551)/5,(598-xx)/5);
+    for(let y=Math.max(0,Math.ceil(cy-half));y<=Math.min(bh-1,Math.floor(cy+half));y++){
+      const d=y-cy,alpha=end*Math.min(1,(half-Math.abs(d))/(1.3*sy));
+      if(alpha<=0)continue;
+      // Carry adjacent wood grain into the dark join at full opacity.
+      const sourceY=cy+5.8*sy+d*.45;
+      for(let k=0;k<3;k++){const i=(y*bw+x)*4+k;p.data[i]=src[i]*(1-alpha)+sample(x,sourceY,k)*alpha;}
     }
   }
-  ctx.putImageData(pixels,left,top);
+  ctx.putImageData(p,x0,y0);
 }
 
 async function prepareExtendedArtwork(){
