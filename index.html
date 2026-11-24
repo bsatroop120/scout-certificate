@@ -379,10 +379,9 @@ function drawing(){
   const nameFont=isScript?'Georgia, "Times New Roman", serif':headingFont;
   let parts=[];
   drawPaper(parts,state.paper);
-  // Match only the added 14-unit top margin to the selected writing-area finish.
-  const topMarginColor={fullwhite:'#ffffff',parchment:'#f3dcb6',white:'#ffffff',mist:'#eef6ff'}[state.paper]||'#ffffff';
-  parts.push('<rect x="0" y="0" width="850" height="14" fill="'+topMarginColor+'"/>');
-  parts.push(`<image x="0" y="14" width="850" height="1086" preserveAspectRatio="none" href="${state.paper==='fullwhite'?ornateFrameFullWhite:ornateFrame}" />`);
+  // Extend the actual top edge of the selected background artwork into the existing 14-unit margin.
+  parts.push(`<defs><image id="certificateArtwork" x="0" y="0" width="850" height="1086" preserveAspectRatio="none" href="${state.paper==='fullwhite'?ornateFrameFullWhite:ornateFrame}"/></defs>`);
+  parts.push('<svg x="0" y="0" width="850" height="14" viewBox="0 0 850 2" preserveAspectRatio="none" overflow="hidden"><use href="#certificateArtwork"/></svg><use href="#certificateArtwork" x="0" y="14"/>');
   // Preserve the painted frame. The finish picker changes only the blank writing area.
   if(state.paper !== 'parchment' && state.paper !== 'fullwhite'){
     const finish={white:['#ffffff',.93],cream:['#fffaf0',.56],mist:['#eef6ff',.62]}[state.paper]||['#ffffff',.86];
