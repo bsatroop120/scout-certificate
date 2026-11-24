@@ -339,7 +339,7 @@ function drawing(){
   const rightEmpty=!state.rightName.trim()&&!state.rightTitle.trim();
   const signature=(side,name,title,centered=false)=>{
     if(!name.trim()&&!title.trim())return '';
-    const x=centered?425:(side==='left'?255:595);
+    const x=centered?425:(side==='left'?275:575);
     const width=centered?290:180;
     const sx=x-width/2;
     const textCenter=sx+width/2;
