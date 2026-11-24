@@ -451,16 +451,36 @@ function drawing(){
   if(orgLines.length){let startY=(orgLines.length===1?380:orgLines.length===2?357:343)+upperShift;orgLines.forEach((t,i)=>{const font=fieldFont('unit','Georgia, "Times New Roman", serif'),size=fittedSize(t,fieldSize('unit',orgLines.length===1?27:24),450,font,'bold',16);parts.push(line(425,startY+i*30,t,{size,family:font,weight:'bold',fill:ink}))})}
   {const font=fieldFont('presentation','Georgia, serif');parts.push(line(425,437+upperShift,(state.presentation||'').trim(),{size:fittedSize(state.presentation||'',fieldSize('presentation',18),420,font,'normal',12),family:font,italic:true,fill:'#6d6a61'}))}
   const rec=noMoreThan(state.recipient,140),recFont=fieldFont('recipient',nameFont),rn=fittedSize(rec,fieldSize('recipient',isScript?56:52),460,recFont,'bold',24);
-  parts.push(line(425,485+upperShift,rec,{size:rn,family:recFont,weight:'bold',fill:c,italic:isScript}));
+  const bounds=(text,family,px,weight,italic)=>{
+    if(family===rusticLogFont)return {ascent:px*.874,descent:/[gjpqy]/.test(text)?px*.314:px*.074};
+    canvasMeasure.font=(italic?'italic ':'')+weight+' '+px+'px '+family;
+    const m=canvasMeasure.measureText(text);
+    return {ascent:m.actualBoundingBoxAscent??px*.75,descent:m.actualBoundingBoxDescent??px*.15};
+  };
+  let recipientY=485+upperShift;
+  if(!state.rank.trim()&&rec){
+    const recipientBounds=bounds(rec,recFont,rn,'bold',isScript);
+    let topLower=null,bottomUpper=null;
+    const presentationText=(state.presentation||'').trim();
+    if(presentationText){
+      const font=fieldFont('presentation','Georgia, serif'),size=fittedSize(state.presentation||'',fieldSize('presentation',18),420,font,'normal',12);
+      topLower=437+upperShift+bounds(presentationText,font,size,'normal',true).descent;
+    }else if(orgLines.length){
+      const t=orgLines[orgLines.length-1],font=fieldFont('unit','Georgia, "Times New Roman", serif'),size=fittedSize(t,fieldSize('unit',orgLines.length===1?27:24),450,font,'bold',16);
+      topLower=(orgLines.length===1?380:orgLines.length===2?357:343)+upperShift+(orgLines.length-1)*30+bounds(t,font,size,'bold',false).descent;
+    }
+    if(state.joining.trim()){
+      bottomUpper=574+upperShift-bounds(noMoreThan(state.joining,90),fieldFont('joining','Georgia, serif'),fieldSize('joining',18),'normal',true).ascent;
+    }else if(state.award.trim()){
+      const t=noMoreThan(state.award,180),font=fieldFont('award',headingFont),weight=theme==='rustic'?'bold':'normal',size=fittedSize(t,fieldSize('award',isScript?45:39),460,font,weight,21);
+      bottomUpper=632+upperShift-bounds(t,font,size,weight,isScript).ascent;
+    }
+    if(topLower!==null&&bottomUpper!==null)recipientY=(topLower+bottomUpper+recipientBounds.ascent-recipientBounds.descent)/2;
+  }
+  parts.push(line(425,recipientY,rec,{size:rn,family:recFont,weight:'bold',fill:c,italic:isScript}));
   if(state.rank.trim()){
     const font=fieldFont('rank',headingFont),rankText=noMoreThan(state.rank,145),size=fittedSize(state.rank,fieldSize('rank',29),460,font,'bold',18);
     // Equalize visible vertical space above and below the rank without moving either neighboring line.
-    const bounds=(text,family,px,weight,italic)=>{
-      if(family===rusticLogFont)return {ascent:px*.874,descent:/[gjpqy]/.test(text)?px*.314:px*.074};
-      canvasMeasure.font=(italic?'italic ':'')+weight+' '+px+'px '+family;
-      const m=canvasMeasure.measureText(text);
-      return {ascent:m.actualBoundingBoxAscent??px*.75,descent:m.actualBoundingBoxDescent??px*.15};
-    };
     const recipientBounds=bounds(rec,recFont,rn,'bold',isScript),rankBounds=bounds(rankText,font,size,'bold',isScript);
     const joiningBounds=bounds(noMoreThan(state.joining,90),fieldFont('joining','Georgia, serif'),fieldSize('joining',18),'normal',true);
     const rankY=(485+recipientBounds.descent+574-joiningBounds.ascent+rankBounds.ascent-rankBounds.descent)/2+upperShift;
