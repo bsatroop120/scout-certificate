@@ -35,6 +35,11 @@ main{max-width:1420px;margin:25px auto 0;padding:0 20px 28px;display:grid;grid-t
 .font-controls label{display:block;min-width:0;color:var(--muted);font-size:11px;font-weight:650}
 .font-controls select{display:block;width:100%;min-width:0;margin-top:3px;padding:7px 5px;border:1px solid #cad5ce;border-radius:7px;background:#fff;color:var(--ink);font:12px system-ui,-apple-system,"Segoe UI",Arial,sans-serif}
 .field-pair .font-controls{grid-template-columns:minmax(0,1fr) 59px;gap:5px}
+.value-group{background:#edf2ee;border:1px solid #dce4dd;border-radius:8px;padding:9px;margin-bottom:11px;min-width:0}
+.value-group>.field{margin-bottom:8px}
+.value-group>.font-controls{margin:0}
+.field-pair .value-group{padding:6px}
+
 .themes{display:flex;gap:7px}
 .theme{flex:1;border:1px solid #cdd8d0;border-radius:9px;background:#f8faf8;padding:8px 6px;font-size:13px;font-weight:650;color:#35473d}
 .theme[aria-pressed="true"]{border-color:var(--accent);background:#e5efe8;box-shadow:inset 0 0 0 1px var(--accent)}
@@ -155,7 +160,10 @@ for(const key of keys){
   const families=familyChoices.map(([value,label])=>`<option value="${value}">${label}</option>`).join('');
   const sizes=sizeChoices.map(([value,label])=>`<option value="${value}">${label}</option>`).join('');
   controls.innerHTML=`<label>Font<select data-font-family="${key}" aria-label="Font for ${key}">${families}</select></label><label>Size<select data-font-size="${key}" aria-label="Font size for ${key}">${sizes}</select></label>`;
-  document.getElementById(key).closest('label.field').insertAdjacentElement('afterend',controls);
+  const field=document.getElementById(key).closest('label.field');
+  const group=document.createElement('div');group.className='value-group';
+  field.insertAdjacentElement('beforebegin',group);
+  group.append(field,controls);
 }
 const accentColors={forest:'#285643',navy:'#304e7a',burgundy:'#82434b',gold:'#996927'};
 const paperStyles={white:{stops:['#ffffff','#fafafa','#f4f4f4'],fleck:'#b6b09a',fleckOpacity:.035},parchment:{stops:['#fffef9','#faf6e9','#efe6d0'],fleck:'#ab9467',fleckOpacity:.1},cream:{stops:['#fffdf7','#f8f2e7','#f0e6d1'],fleck:'#b49a73',fleckOpacity:.08},mist:{stops:['#ffffff','#f5f8fa','#e9eff4'],fleck:'#9fadb7',fleckOpacity:.055},fullwhite:{stops:['#ffffff','#ffffff','#ffffff'],fleck:'#ffffff',fleckOpacity:0}};
