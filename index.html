@@ -380,7 +380,7 @@ function drawing(){
   const nameFont=isScript?'Georgia, "Times New Roman", serif':headingFont;
   let parts=[];
   drawPaper(parts,state.paper);
-  parts.push(`<image x="0" y="0" width="850" height="1100" preserveAspectRatio="none" href="${state.paper==='fullwhite'?ornateFrameFullWhite:ornateFrame}" />`);
+  parts.push(`<image x="0" y="14" width="850" height="1086" preserveAspectRatio="none" href="${state.paper==='fullwhite'?ornateFrameFullWhite:ornateFrame}" />`);
   // Preserve the painted frame. The finish picker changes only the blank writing area.
   if(state.paper !== 'parchment' && state.paper !== 'fullwhite'){
     const finish={white:['#ffffff',.93],cream:['#fffaf0',.56],mist:['#eef6ff',.62]}[state.paper]||['#ffffff',.86];
