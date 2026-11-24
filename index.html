@@ -372,6 +372,56 @@ function drawPaper(parts,paper){
   </defs>`);
   parts.push('<rect width="850" height="1100" fill="url(#paper)"/><rect width="850" height="1100" fill="url(#flecks)"/>');
 }
+
+// Prepare one continuous background raster, retaining every original artwork pixel.
+// Use the white edition as a mask so the paper extension never copies leaves or lettering.
+let extendedArtwork=null;
+function loadArtwork(src){return new Promise((resolve,reject)=>{const img=new Image();img.onload=()=>resolve(img);img.onerror=reject;img.src=src})}
+async function prepareExtendedArtwork(){
+  const [parchment,white]=await Promise.all([loadArtwork(ornateFrame),loadArtwork(ornateFrameFullWhite)]);
+  const w=parchment.naturalWidth,h=parchment.naturalHeight,pad=Math.max(1,Math.round(h*14/1086));
+  const source=document.createElement('canvas');source.width=w;source.height=h;
+  const sc=source.getContext('2d',{willReadFrequently:true});sc.drawImage(parchment,0,0,w,h);
+  const original=sc.getImageData(0,0,w,h).data;
+  sc.clearRect(0,0,w,h);sc.drawImage(white,0,0,w,h);
+  const mask=sc.getImageData(0,0,w,3).data;
+  // Find genuine paper at the existing top edge; interpolate across artwork touching the edge.
+  const good=new Uint8Array(w),left=new Int32Array(w),right=new Int32Array(w);
+  for(let x=0;x<w;x++){const i=x*4;good[x]=mask[i]>245&&mask[i+1]>245&&mask[i+2]>245?1:0}
+  let p=-1;for(let x=0;x<w;x++){if(good[x])p=x;left[x]=p}
+  p=-1;for(let x=w-1;x>=0;x--){if(good[x])p=x;right[x]=p}
+  const edge=new Float32Array(w*3);
+  for(let x=0;x<w;x++){
+    let a=left[x],b=right[x];if(a<0)a=b;if(b<0)b=a;
+    const t=a===b?0:(x-a)/(b-a);
+    for(let k=0;k<3;k++)edge[x*3+k]=a<0?[247,224,185][k]:original[a*4+k]*(1-t)+original[b*4+k]*t;
+  }
+  // Use native-resolution parchment grain from the blank interior; remove its low-frequency
+  // tone and match the local top-edge paper color. No vertical stretching or copied graphics.
+  const canvas=document.createElement('canvas');canvas.width=w;canvas.height=h+pad;
+  const ctx=canvas.getContext('2d'),extension=ctx.createImageData(w,pad);
+  const grainWidth=Math.floor(w*.46),grainStart=Math.floor(w*.27),grainY=Math.floor(h*.64);
+  for(let y=0;y<pad;y++)for(let x=0;x<w;x++){
+    const tx=grainStart+((x+grainWidth)% (2*grainWidth)<grainWidth?(x+grainWidth)%(2*grainWidth):2*grainWidth-1-(x+grainWidth)%(2*grainWidth));
+    const ty=grainY+y,ti=(ty*w+tx)*4,oi=(y*w+x)*4;
+    const near=Math.max(0,1-(pad-1-y)/5);
+    for(let k=0;k<3;k++){
+      let avg=0,n=0;
+      for(let dy=-3;dy<=3;dy+=3)for(let dx=-6;dx<=6;dx+=3){avg+=original[((ty+dy)*w+tx+dx)*4+k];n++}
+      const grain=original[ti+k]-avg/n;
+      let tone=0,weight=0;
+      for(let dx=-12;dx<=12;dx+=3){const j=Math.max(0,Math.min(w-1,x+dx)),v=13-Math.abs(dx);tone+=edge[j*3+k]*v;weight+=v}
+      const base=tone/weight;
+      extension.data[oi+k]=(base+grain)*(1-near)+edge[x*3+k]*near;
+    }
+    extension.data[oi+3]=255;
+  }
+  ctx.putImageData(extension,0,0);ctx.drawImage(parchment,0,pad,w,h);
+  const parchmentSrc=canvas.toDataURL('image/png');
+  ctx.fillStyle='#ffffff';ctx.fillRect(0,0,w,h+pad);ctx.drawImage(white,0,pad,w,h);
+  extendedArtwork={parchment:parchmentSrc,fullwhite:canvas.toDataURL('image/png')};
+}
+
 function drawing(){
   const c=accentColors[state.accent]||accentColors.forest,theme=state.theme,ink=theme==='rustic'?'#394239':'#303a34';
   const isScript=theme==='script';
@@ -379,9 +429,9 @@ function drawing(){
   const nameFont=isScript?'Georgia, "Times New Roman", serif':headingFont;
   let parts=[];
   drawPaper(parts,state.paper);
-  // Fill the existing top margin from a clean section of the selected artwork's paper texture, without stretching the top edge vertically.
-  parts.push(`<defs><image id="certificateArtwork" x="0" y="0" width="850" height="1086" preserveAspectRatio="none" href="${state.paper==='fullwhite'?ornateFrameFullWhite:ornateFrame}"/></defs>`);
-  parts.push('<svg x="0" y="0" width="850" height="14" viewBox="225 690 400 14" preserveAspectRatio="none" overflow="hidden"><use href="#certificateArtwork"/></svg><use href="#certificateArtwork" x="0" y="14"/>');
+  const artwork=state.paper==='fullwhite'?'fullwhite':'parchment';
+  if(extendedArtwork){parts.push(`<image x="0" y="0" width="850" height="1100" preserveAspectRatio="none" href="${extendedArtwork[artwork]}" />`)}
+  else{parts.push(`<image x="0" y="14" width="850" height="1086" preserveAspectRatio="none" href="${artwork==='fullwhite'?ornateFrameFullWhite:ornateFrame}" />`)}
   // Preserve the painted frame. The finish picker changes only the blank writing area.
   if(state.paper !== 'parchment' && state.paper !== 'fullwhite'){
     const finish={white:['#ffffff',.93],cream:['#fffaf0',.56],mist:['#eef6ff',.62]}[state.paper]||['#ffffff',.86];
@@ -442,8 +492,9 @@ objStart(4);append(`<< /Type /XObject /Subtype /Image /Width ${w} /Height ${h} /
 const stream='q\n612 0 0 792 0 0 cm\n/Certificate Do\nQ\n';objStart(5);append('<< /Length '+bytesAscii(stream).byteLength+' >>\nstream\n'+stream+'endstream');objEnd();
 const xref=size;append('xref\n0 6\n0000000000 65535 f \n');for(let i=1;i<=5;i++)append(String(offset[i]).padStart(10,'0')+' 00000 n \n');append('trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n'+xref+'\n%%EOF\n');return new Blob(parts,{type:'application/pdf'})}
 function downloadBlob(blob,name){resetGeneratedPdf();currentPdfUrl=URL.createObjectURL(blob);const save=document.getElementById('pdf-save');save.href=currentPdfUrl;save.download=name;const open=document.getElementById('pdf-open');open.href=currentPdfUrl;document.getElementById('pdf-links').hidden=false}
-async function savePdf(){if(certificate.dataset.citationOverflow==='true'){showStatus('Citation is too long to fit; shorten it before exporting.',true);return}const btn=document.getElementById('download');btn.disabled=true;try{const slug=state.recipient.trim().normalize('NFKD').replace(/[^a-zA-Z0-9 ]/g,'').trim().replace(/\s+/g,'-').slice(0,40)||'Scout';const filename='Scout-Certificate-'+slug+'.pdf';let handle=null;if(typeof window.showSaveFilePicker==='function'){try{handle=await window.showSaveFilePicker({suggestedName:filename,types:[{description:'PDF document',accept:{'application/pdf':['.pdf']}}]})}catch(err){if(err.name==='AbortError'){showStatus('');return}if(err.name!=='SecurityError'&&err.name!=='NotAllowedError')throw err}}showStatus('Creating a print-ready PDF…');const clone=certificate.cloneNode(true);clone.setAttribute('xmlns','http://www.w3.org/2000/svg');clone.setAttribute('width','850');clone.setAttribute('height','1100');const svgText=new XMLSerializer().serializeToString(clone);const source=URL.createObjectURL(new Blob([svgText],{type:'image/svg+xml;charset=utf-8'}));let img=new Image();try{await new Promise((resolve,reject)=>{img.onload=resolve;img.onerror=()=>reject(new Error('Certificate rendering failed'));img.src=source})}finally{URL.revokeObjectURL(source)}const w=2550,h=3300;const canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;const ctx=canvas.getContext('2d',{alpha:false});if(!ctx)throw new Error('Canvas unavailable');ctx.fillStyle='#fff';ctx.fillRect(0,0,w,h);ctx.drawImage(img,0,0,w,h);const uri=canvas.toDataURL('image/jpeg',.96);const binary=atob(uri.substring(uri.indexOf(',')+1));const imageBytes=new Uint8Array(binary.length);for(let i=0;i<binary.length;i++)imageBytes[i]=binary.charCodeAt(i);const pdf=makePdf(imageBytes,w,h);if(handle){const writable=await handle.createWritable();await writable.write(pdf);await writable.close();showStatus('PDF saved.')}else{downloadBlob(pdf,filename);showStatus('PDF ready. Your browser does not allow the Save As dialog here. Open the PDF in a new tab to save it, or enable Ask where to save each file in browser download settings and select Save PDF.')}}catch(err){showStatus('PDF could not be created: '+(err.message||err)+'. Try the Print button and Save as PDF.',true);console.error(err)}finally{btn.disabled=false}}
+async function savePdf(){if(certificate.dataset.citationOverflow==='true'){showStatus('Citation is too long to fit; shorten it before exporting.',true);return}const btn=document.getElementById('download');btn.disabled=true;try{const slug=state.recipient.trim().normalize('NFKD').replace(/[^a-zA-Z0-9 ]/g,'').trim().replace(/\s+/g,'-').slice(0,40)||'Scout';const filename='Scout-Certificate-'+slug+'.pdf';let handle=null;if(typeof window.showSaveFilePicker==='function'){try{handle=await window.showSaveFilePicker({suggestedName:filename,types:[{description:'PDF document',accept:{'application/pdf':['.pdf']}}]})}catch(err){if(err.name==='AbortError'){showStatus('');return}if(err.name!=='SecurityError'&&err.name!=='NotAllowedError')throw err}}showStatus('Creating a print-ready PDF…');await backgroundReady;const clone=certificate.cloneNode(true);clone.setAttribute('xmlns','http://www.w3.org/2000/svg');clone.setAttribute('width','850');clone.setAttribute('height','1100');const svgText=new XMLSerializer().serializeToString(clone);const source=URL.createObjectURL(new Blob([svgText],{type:'image/svg+xml;charset=utf-8'}));let img=new Image();try{await new Promise((resolve,reject)=>{img.onload=resolve;img.onerror=()=>reject(new Error('Certificate rendering failed'));img.src=source})}finally{URL.revokeObjectURL(source)}const w=2550,h=3300;const canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;const ctx=canvas.getContext('2d',{alpha:false});if(!ctx)throw new Error('Canvas unavailable');ctx.fillStyle='#fff';ctx.fillRect(0,0,w,h);ctx.drawImage(img,0,0,w,h);const uri=canvas.toDataURL('image/jpeg',.96);const binary=atob(uri.substring(uri.indexOf(',')+1));const imageBytes=new Uint8Array(binary.length);for(let i=0;i<binary.length;i++)imageBytes[i]=binary.charCodeAt(i);const pdf=makePdf(imageBytes,w,h);if(handle){const writable=await handle.createWritable();await writable.write(pdf);await writable.close();showStatus('PDF saved.')}else{downloadBlob(pdf,filename);showStatus('PDF ready. Your browser does not allow the Save As dialog here. Open the PDF in a new tab to save it, or enable Ask where to save each file in browser download settings and select Save PDF.')}}catch(err){showStatus('PDF could not be created: '+(err.message||err)+'. Try the Print button and Save as PDF.',true);console.error(err)}finally{btn.disabled=false}}
 document.getElementById('download').addEventListener('click',savePdf);
 restore();toForm();drawing();
+const backgroundReady=prepareExtendedArtwork().then(()=>drawing()).catch(err=>console.error('Background preparation failed',err));
 })();
 </script>
