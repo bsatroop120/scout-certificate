@@ -611,6 +611,30 @@ function refineKindLettering(ctx,w,h,pad){
   ctx.putImageData(pixels,left,top);
 }
 
+// Reduce the repaired center knot by 10% without cutting the adjoining roots.
+function reduceSquareKnot(ctx,w,h,pad){
+  const sx=w/1088,sy=h/1394,cx=523.5,cy=1311;
+  const rx=100,ry=51,outer=1.55,scale=.90;
+  const left=Math.floor((cx-outer*rx)*sx)-2,right=Math.ceil((cx+outer*rx)*sx)+2;
+  const top=Math.floor(pad+(cy-outer*ry)*sy)-2,bottom=Math.ceil(pad+(cy+outer*ry)*sy)+2;
+  const bw=right-left,bh=bottom-top;
+  const patch=ctx.getImageData(left,top,bw,bh),src=new Uint8ClampedArray(patch.data);
+  for(let y=0;y<bh;y++)for(let x=0;x<bw;x++){
+    const dx=(left+x)/sx-cx,dy=(top+y-pad)/sy-cy;
+    const radius=Math.max(Math.abs(dx)/rx,Math.abs(dy)/ry);
+    if(radius>=outer)continue;
+    // Constant scale over the entire knot; smooth transition to the untouched frame.
+    const t=Math.max(0,Math.min(1,(radius-1)/(outer-1)));
+    const weight=1-t*t*(3-2*t),factor=1+(1/scale-1)*weight;
+    const u=(cx+dx*factor)*sx-left,v=pad+(cy+dy*factor)*sy-top;
+    const ix=Math.floor(u),iy=Math.floor(v),fx=u-ix,fy=v-iy;
+    if(ix<0||iy<0||ix>=bw-1||iy>=bh-1)continue;
+    const a=(iy*bw+ix)*4,b=a+bw*4,d=(y*bw+x)*4;
+    for(let k=0;k<4;k++)patch.data[d+k]=(src[a+k]*(1-fx)+src[a+4+k]*fx)*(1-fy)+(src[b+k]*(1-fx)+src[b+4+k]*fx)*fy;
+  }
+  ctx.putImageData(patch,left,top);
+}
+
 async function prepareExtendedArtwork(){
   const [parchment,white]=await Promise.all([loadArtwork(ornateFrame),loadArtwork(ornateFrameFullWhite)]);
   const w=parchment.naturalWidth,h=parchment.naturalHeight,pad=Math.max(1,Math.round(h*14/1086));
@@ -654,11 +678,13 @@ async function prepareExtendedArtwork(){
   matchRightRope(ctx,parchment,w,h,pad);
   smoothCenterKnotSeam(ctx,w,h,pad);
   refineKindLettering(ctx,w,h,pad);
+  reduceSquareKnot(ctx,w,h,pad);
   const parchmentSrc=canvas.toDataURL('image/png');
   ctx.fillStyle='#ffffff';ctx.fillRect(0,0,w,h+pad);ctx.drawImage(white,0,pad,w,h);
   matchRightRope(ctx,white,w,h,pad);
   smoothCenterKnotSeam(ctx,w,h,pad);
   refineKindLettering(ctx,w,h,pad);
+  reduceSquareKnot(ctx,w,h,pad);
   extendedArtwork={parchment:parchmentSrc,fullwhite:canvas.toDataURL('image/png')};
 }
 
