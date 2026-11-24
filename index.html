@@ -573,6 +573,44 @@ function smoothCenterKnotSeam(ctx,w,h,pad){
   ctx.putImageData(p,x0,y0);
 }
 
+// Preserve the original KIND glyphs and ribbon. Give the ink the same
+// subtle relief, grain and curved baseline as the neighboring law lettering.
+function refineKindLettering(ctx,w,h,pad){
+  const sx=w/1088,sy=h/1394;
+  const left=Math.floor(69*sx),top=Math.floor(pad+1076*sy);
+  const bw=Math.ceil(170*sx)-left,bh=Math.ceil(pad+1145*sy)-top;
+  const pixels=ctx.getImageData(left,top,bw,bh),src=new Uint8ClampedArray(pixels.data);
+  // Isolate the word inside its sloping ribbon face, never the ribbon edges.
+  const mask=new Float32Array(bw*bh);
+  const clamp=(v)=>Math.max(0,Math.min(1,v));
+  for(let y=0;y<bh;y++)for(let x=0;x<bw;x++){
+    const xx=(left+x)/sx,yy=(top+y-pad)/sy;
+    const baseline=1141-.36*(xx-74);
+    if(xx<73||xx>166||yy<baseline-39||yy>baseline+3)continue;
+    const j=(y*bw+x)*4;
+    const lum=.299*src[j]+.587*src[j+1]+.114*src[j+2];
+    mask[y*bw+x]=clamp((143-lum)/88)*clamp((xx-73)/2)*clamp((166-xx)/2);
+  }
+  const at=(x,y)=>x<0||x>=bw||y<0||y>=bh?0:mask[y*bw+x];
+  for(let y=1;y<bh-1;y++)for(let x=1;x<bw-1;x++){
+    const i=y*bw+x,j=i*4,m=mask[i];
+    const xx=(left+x)/sx,yy=(top+y-pad)/sy;
+    const baseline=1141-.36*(xx-74);
+    if(xx<73||xx>166||yy<baseline-40||yy>baseline+4)continue;
+    const upper=at(x-1,y-1),lower=at(x+1,y+1);
+    const shadow=Math.max(0,upper-m)*.19;
+    const highlight=Math.max(0,lower-m)*.24;
+    const relief=(lower-upper)*m;
+    const grain=Math.sin(xx*2.31+yy*1.71)*Math.sin(xx*4.17-yy*.67);
+    const light=m*(8+7*Math.cos((xx-110)/35)+4*grain)+12*relief;
+    for(let k=0;k<3;k++){
+      const base=src[j+k],warm=[105,67,36][k],edge=[250,220,172][k];
+      pixels.data[j+k]=Math.max(0,Math.min(255,(base+light*(k===0?1:k===1?.8:.55))*(1-shadow-highlight)+warm*shadow+edge*highlight));
+    }
+  }
+  ctx.putImageData(pixels,left,top);
+}
+
 async function prepareExtendedArtwork(){
   const [parchment,white]=await Promise.all([loadArtwork(ornateFrame),loadArtwork(ornateFrameFullWhite)]);
   const w=parchment.naturalWidth,h=parchment.naturalHeight,pad=Math.max(1,Math.round(h*14/1086));
@@ -615,10 +653,12 @@ async function prepareExtendedArtwork(){
   ctx.putImageData(extension,0,0);ctx.drawImage(parchment,0,pad,w,h);
   matchRightRope(ctx,parchment,w,h,pad);
   smoothCenterKnotSeam(ctx,w,h,pad);
+  refineKindLettering(ctx,w,h,pad);
   const parchmentSrc=canvas.toDataURL('image/png');
   ctx.fillStyle='#ffffff';ctx.fillRect(0,0,w,h+pad);ctx.drawImage(white,0,pad,w,h);
   matchRightRope(ctx,white,w,h,pad);
   smoothCenterKnotSeam(ctx,w,h,pad);
+  refineKindLettering(ctx,w,h,pad);
   extendedArtwork={parchment:parchmentSrc,fullwhite:canvas.toDataURL('image/png')};
 }
 
